@@ -9,6 +9,9 @@ export const NotaFiscalSchema = z.object({
   cnpjEmitente: z.string(),
   cnpjDestinatario: z.string(),
   valorTotal: z.number(),
+  vIBS: z.number().optional(),
+  vCBS: z.number().optional(),
+  cIBSCBS: z.string().optional(),
 });
 
 export type NotaFiscal = z.infer<typeof NotaFiscalSchema>;
