@@ -1,0 +1,14 @@
+import { z } from "zod";
+
+export const NotaFiscalSchema = z.object({
+  chave: z.string().length(44),
+  naturezaOperacao: z.string(),
+  cfop: z.string(),
+  cst: z.string().optional(),
+  csosn: z.string().optional(),
+  cnpjEmitente: z.string(),
+  cnpjDestinatario: z.string(),
+  valorTotal: z.number(),
+});
+
+export type NotaFiscal = z.infer<typeof NotaFiscalSchema>;
