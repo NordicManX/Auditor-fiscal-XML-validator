@@ -1,4 +1,4 @@
-import { createClient } from "./server";
+import { createAdminClient } from "./server";
 import { ResultadoValidacao } from "../../domain/entities/resultado-validacao";
 
 export async function salvarValidacao(
@@ -6,7 +6,7 @@ export async function salvarValidacao(
   ambiente: number,
   resultados: ResultadoValidacao[],
 ) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const valido = resultados.length === 0;
 
   const { data: validacao, error: validacaoError } = await supabase

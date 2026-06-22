@@ -7,6 +7,7 @@ import {
 export function parseXmlNfe(xmlData: string): NotaFiscal {
   const parser = new XMLParser({
     ignoreAttributes: false,
+    parseTagValue: false,
     attributeNamePrefix: "",
   });
 

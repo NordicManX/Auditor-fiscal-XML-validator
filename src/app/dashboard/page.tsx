@@ -53,9 +53,25 @@ export default function DashboardPage() {
       })
 
       const data = await response.json()
+      
+      // Verifica se a API retornou um erro (status 400, 422, 500) ou sucesso: false
+      if (!response.ok || data.sucesso === false) {
+        setResultado({
+          falhaCritica: true,
+          erro: data.erro || 'Erro ao processar arquivo',
+          motivo: data.motivo || 'O arquivo enviado não é um XML de NF-e válido ou está corrompido.'
+        })
+        return
+      }
+
       setResultado(data)
     } catch (error) {
       console.error(error)
+      setResultado({
+        falhaCritica: true,
+        erro: 'Erro de conexão',
+        motivo: 'Não foi possível conectar ao motor de validação.'
+      })
     } finally {
       setIsLoading(false)
     }
@@ -120,60 +136,82 @@ export default function DashboardPage() {
 
       {resultado && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className={`p-6 rounded-2xl border ${resultado.errosEncontrados === 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-red-500/10 border-red-500/20'} backdrop-blur-md flex items-start gap-4`}>
-            {resultado.errosEncontrados === 0 ? (
-              <CheckCircle className="w-8 h-8 text-emerald-500 shrink-0" />
-            ) : (
-              <XCircle className="w-8 h-8 text-red-500 shrink-0" />
-            )}
-            
-            <div>
-              <h3 className={`text-xl font-bold ${resultado.errosEncontrados === 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {resultado.errosEncontrados === 0 ? 'Nota Fiscal Válida' : `${resultado.errosEncontrados} Inconsistência(s) Encontrada(s)`}
-              </h3>
-              <p className="text-sm text-gray-300 mt-1">
-                Chave: <span className="font-mono text-white">{resultado.chave || 'Não identificada'}</span>
-              </p>
+          
+          {/* Renderização de Falha Crítica do Servidor (Parse do XML falhou) */}
+          {resultado.falhaCritica ? (
+            <div className="p-6 rounded-2xl border bg-red-500/10 border-red-500/20 backdrop-blur-md flex items-start gap-4">
+              <AlertTriangle className="w-8 h-8 text-red-500 shrink-0" />
+              <div>
+                <h3 className="text-xl font-bold text-red-400">
+                  {resultado.erro}
+                </h3>
+                <p className="text-sm text-gray-300 mt-1">
+                  Detalhe técnico: <span className="font-mono text-white/70">{resultado.motivo}</span>
+                </p>
+                <p className="text-xs text-red-400/80 mt-3 font-semibold">
+                  Dica: Verifique se o arquivo enviado é realmente um XML de Nota Fiscal válido.
+                </p>
+              </div>
             </div>
-          </div>
-
-          {resultado.errosEncontrados > 0 && (
-            <div className="space-y-4">
-              <h4 className="text-lg font-semibold text-white">Detalhamento para Correção</h4>
-              {resultado.detalhes.map((erro: any, idx: number) => (
-                <div key={idx} className="bg-[#091E26]/90 border border-white/10 rounded-xl p-5 shadow-lg relative overflow-hidden">
-                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${erro.risco === 'CRITICO' ? 'bg-red-500' : 'bg-[#f25c25]'}`}></div>
-                  
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-xs font-mono text-gray-300 border border-white/5">
-                          {erro.codigoRejeicao}
-                        </span>
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${erro.risco === 'CRITICO' ? 'bg-red-500/20 text-red-400' : 'bg-[#f25c25]/20 text-[#f25c25]'}`}>
-                          Risco {erro.risco}
-                        </span>
-                      </div>
-                      <h5 className="text-base font-medium text-white mb-1">{erro.mensagemHumana}</h5>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-500 mb-1">Campo Afetado</p>
-                      <code className="text-sm text-[#5d14a6] bg-[#5d14a6]/10 px-2 py-1 rounded font-mono">
-                        {erro.campoAfetado}
-                      </code>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-white/5 flex gap-3">
-                    <AlertTriangle className="w-5 h-5 text-[#f25c25] shrink-0" />
-                    <div>
-                      <p className="text-xs text-gray-500 mb-0.5">Ação Recomendada no ERP</p>
-                      <p className="text-sm text-gray-200">{erro.acaoCorretiva}</p>
-                    </div>
-                  </div>
+          ) : (
+            /* Renderização Padrão de Sucesso ou Erros Fiscais */
+            <>
+              <div className={`p-6 rounded-2xl border ${resultado.errosEncontrados === 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-orange-500/10 border-orange-500/20'} backdrop-blur-md flex items-start gap-4`}>
+                {resultado.errosEncontrados === 0 ? (
+                  <CheckCircle className="w-8 h-8 text-emerald-500 shrink-0" />
+                ) : (
+                  <XCircle className="w-8 h-8 text-[#f25c25] shrink-0" />
+                )}
+                
+                <div>
+                  <h3 className={`text-xl font-bold ${resultado.errosEncontrados === 0 ? 'text-emerald-400' : 'text-[#f25c25]'}`}>
+                    {resultado.errosEncontrados === 0 ? 'Nota Fiscal Válida' : `${resultado.errosEncontrados} Inconsistência(s) Encontrada(s)`}
+                  </h3>
+                  <p className="text-sm text-gray-300 mt-1">
+                    Chave: <span className="font-mono text-white">{resultado.chave || 'Não identificada'}</span>
+                  </p>
                 </div>
-              ))}
-            </div>
+              </div>
+
+              {resultado.errosEncontrados > 0 && (
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold text-white">Detalhamento para Correção</h4>
+                  {resultado.detalhes.map((erro: any, idx: number) => (
+                    <div key={idx} className="bg-[#091E26]/90 border border-white/10 rounded-xl p-5 shadow-lg relative overflow-hidden">
+                      <div className={`absolute left-0 top-0 bottom-0 w-1 ${erro.risco === 'CRITICO' ? 'bg-red-500' : 'bg-[#f25c25]'}`}></div>
+                      
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-xs font-mono text-gray-300 border border-white/5">
+                              {erro.codigoRejeicao || 'S/N'}
+                            </span>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${erro.risco === 'CRITICO' ? 'bg-red-500/20 text-red-400' : 'bg-[#f25c25]/20 text-[#f25c25]'}`}>
+                              Risco {erro.risco}
+                            </span>
+                          </div>
+                          <h5 className="text-base font-medium text-white mb-1">{erro.mensagemHumana}</h5>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500 mb-1">Campo Afetado</p>
+                          <code className="text-sm text-[#5d14a6] bg-[#5d14a6]/10 px-2 py-1 rounded font-mono">
+                            {erro.campoAfetado || 'N/A'}
+                          </code>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-4 border-t border-white/5 flex gap-3">
+                        <AlertTriangle className="w-5 h-5 text-[#f25c25] shrink-0" />
+                        <div>
+                          <p className="text-xs text-gray-500 mb-0.5">Ação Recomendada no ERP</p>
+                          <p className="text-sm text-gray-200">{erro.acaoCorretiva}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
