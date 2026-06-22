@@ -7,8 +7,8 @@ import {
 export function parseXmlNfe(xmlData: string): NotaFiscal {
   const parser = new XMLParser({
     ignoreAttributes: false,
-    parseTagValue: false,
     attributeNamePrefix: "",
+    parseTagValue: false, // Mantemos o false para não perder os zeros do CNPJ
   });
 
   const jsonObj = parser.parse(xmlData);
@@ -30,8 +30,9 @@ export function parseXmlNfe(xmlData: string): NotaFiscal {
     cst: imposto?.ICMS?.[Object.keys(imposto?.ICMS || {})[0]]?.CST?.toString(),
     csosn:
       imposto?.ICMS?.[Object.keys(imposto?.ICMS || {})[0]]?.CSOSN?.toString(),
-    cnpjEmitente: infNFe.emit?.CNPJ,
-    cnpjDestinatario: infNFe.dest?.CNPJ,
+    cnpjEmitente: infNFe.emit?.CNPJ?.toString(),
+    cnpjDestinatario: infNFe.dest?.CNPJ?.toString(), // Extrai se existir
+    cpfDestinatario: infNFe.dest?.CPF?.toString(), // Extrai se for pessoa física
     valorTotal: Number(infNFe.total?.ICMSTot?.vNF),
     vIBS: ibsCbs ? Number(ibsCbs.vIBS || 0) : undefined,
     vCBS: ibsCbs ? Number(ibsCbs.vCBS || 0) : undefined,

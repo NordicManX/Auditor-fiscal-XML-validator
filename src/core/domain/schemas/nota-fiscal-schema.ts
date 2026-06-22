@@ -7,7 +7,8 @@ export const NotaFiscalSchema = z.object({
   cst: z.string().optional(),
   csosn: z.string().optional(),
   cnpjEmitente: z.string(),
-  cnpjDestinatario: z.string(),
+  cnpjDestinatario: z.string().optional(), // Agora é opcional
+  cpfDestinatario: z.string().optional(), // Novo campo adicionado
   valorTotal: z.number(),
   vIBS: z.number().optional(),
   vCBS: z.number().optional(),
