@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { UploadCloud, FileType, AlertCircle } from 'lucide-react'
+import { UploadCloud, FileType, Loader2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
 
 export default function DashboardPage() {
   const [isDragging, setIsDragging] = useState(false)
   const [file, setFile] = useState<File | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [resultado, setResultado] = useState<any>(null)
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -23,17 +25,45 @@ export default function DashboardPage() {
     const droppedFile = e.dataTransfer.files[0]
     if (droppedFile?.name.endsWith('.xml')) {
       setFile(droppedFile)
+      setResultado(null)
     }
   }, [])
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
-    if (selectedFile) setFile(selectedFile)
+    if (selectedFile) {
+      setFile(selectedFile)
+      setResultado(null)
+    }
   }, [])
 
+  const executarValidacao = async () => {
+    if (!file) return
+    
+    setIsLoading(true)
+    setResultado(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('xml', file)
+
+      const response = await fetch('/api/validate', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+      setResultado(data)
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
-    <div className="max-w-4xl mx-auto">
-      <header className="mb-10">
+    <div className="max-w-5xl mx-auto space-y-8">
+      <header>
         <h1 className="text-3xl font-bold text-white mb-2">Validação de Pré-Transmissão</h1>
         <p className="text-gray-400">Arraste o arquivo XML da NF-e para analisar regras de IBS/CBS e consistência fiscal.</p>
       </header>
@@ -42,7 +72,7 @@ export default function DashboardPage() {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative flex flex-col items-center justify-center w-full h-80 rounded-2xl border-2 border-dashed transition-all duration-300 bg-[#091E26]/80 backdrop-blur-sm ${
+        className={`relative flex flex-col items-center justify-center w-full h-64 rounded-2xl border-2 border-dashed transition-all duration-300 bg-[#091E26]/80 backdrop-blur-sm ${
           isDragging 
             ? 'border-[#f25c25] bg-[#f25c25]/5 scale-[1.02]' 
             : 'border-white/20 hover:border-[#5d14a6]/50 hover:bg-white/5'
@@ -66,8 +96,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {file && (
-        <div className="mt-6 flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-md">
+      {file && !resultado && (
+        <div className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-md">
           <div className="flex items-center gap-4">
             <div className="p-2 rounded-lg bg-[#5d14a6]/20">
               <FileType className="w-6 h-6 text-[#5d14a6]" />
@@ -78,11 +108,73 @@ export default function DashboardPage() {
             </div>
           </div>
           <button 
-            className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-[#f25c25] to-[#5d14a6] text-sm font-bold text-white shadow-lg hover:opacity-90 transition-opacity"
-            onClick={() => {/* Implementaremos a chamada à API aqui */}}
+            onClick={executarValidacao}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-[#f25c25] to-[#5d14a6] text-sm font-bold text-white shadow-lg hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            Executar Validação
+            {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {isLoading ? 'Analisando...' : 'Executar Validação'}
           </button>
+        </div>
+      )}
+
+      {resultado && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className={`p-6 rounded-2xl border ${resultado.errosEncontrados === 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-red-500/10 border-red-500/20'} backdrop-blur-md flex items-start gap-4`}>
+            {resultado.errosEncontrados === 0 ? (
+              <CheckCircle className="w-8 h-8 text-emerald-500 shrink-0" />
+            ) : (
+              <XCircle className="w-8 h-8 text-red-500 shrink-0" />
+            )}
+            
+            <div>
+              <h3 className={`text-xl font-bold ${resultado.errosEncontrados === 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {resultado.errosEncontrados === 0 ? 'Nota Fiscal Válida' : `${resultado.errosEncontrados} Inconsistência(s) Encontrada(s)`}
+              </h3>
+              <p className="text-sm text-gray-300 mt-1">
+                Chave: <span className="font-mono text-white">{resultado.chave || 'Não identificada'}</span>
+              </p>
+            </div>
+          </div>
+
+          {resultado.errosEncontrados > 0 && (
+            <div className="space-y-4">
+              <h4 className="text-lg font-semibold text-white">Detalhamento para Correção</h4>
+              {resultado.detalhes.map((erro: any, idx: number) => (
+                <div key={idx} className="bg-[#091E26]/90 border border-white/10 rounded-xl p-5 shadow-lg relative overflow-hidden">
+                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${erro.risco === 'CRITICO' ? 'bg-red-500' : 'bg-[#f25c25]'}`}></div>
+                  
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-xs font-mono text-gray-300 border border-white/5">
+                          {erro.codigoRejeicao}
+                        </span>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${erro.risco === 'CRITICO' ? 'bg-red-500/20 text-red-400' : 'bg-[#f25c25]/20 text-[#f25c25]'}`}>
+                          Risco {erro.risco}
+                        </span>
+                      </div>
+                      <h5 className="text-base font-medium text-white mb-1">{erro.mensagemHumana}</h5>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500 mb-1">Campo Afetado</p>
+                      <code className="text-sm text-[#5d14a6] bg-[#5d14a6]/10 px-2 py-1 rounded font-mono">
+                        {erro.campoAfetado}
+                      </code>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-white/5 flex gap-3">
+                    <AlertTriangle className="w-5 h-5 text-[#f25c25] shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-500 mb-0.5">Ação Recomendada no ERP</p>
+                      <p className="text-sm text-gray-200">{erro.acaoCorretiva}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
