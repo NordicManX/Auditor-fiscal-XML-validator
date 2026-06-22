@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { parseXmlNfe } from "@/core/infra/parsers/xml-parser";
 import { MotorValidacao } from "@/core/application/use-cases/motor-validacao";
+import { salvarValidacao } from "@/core/infra/supabase/validacao-repository";
 
 export async function POST(request: Request) {
   try {
@@ -20,9 +21,16 @@ export async function POST(request: Request) {
     const motor = new MotorValidacao();
     const resultados = motor.executarTodas(notaFiscal);
 
+    const validacaoId = await salvarValidacao(
+      notaFiscal.chave,
+      2026,
+      resultados,
+    );
+
     return NextResponse.json(
       {
         sucesso: true,
+        id: validacaoId,
         chave: notaFiscal.chave,
         ambiente: 2026,
         errosEncontrados: resultados.length,
